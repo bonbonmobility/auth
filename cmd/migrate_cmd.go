@@ -49,18 +49,27 @@ func migrate(cmd *cobra.Command, args []string) {
 			pop.SetLogger(noopLogger)
 		}
 	}
+	deets := &pop.ConnectionDetails{Dialect: globalConfig.DB.Driver}
+	if globalConfig.DB.URL != "" {
+		u, _ := url.Parse(globalConfig.DB.URL)
+		processedUrl := globalConfig.DB.URL
+		if len(u.Query()) != 0 {
+			processedUrl = fmt.Sprintf("%s&application_name=gotrue_migrations", processedUrl)
+		} else {
+			processedUrl = fmt.Sprintf("%s?application_name=gotrue_migrations", processedUrl)
+		}
+		deets.URL = processedUrl
+	} else if globalConfig.DB.SocketInstance != "" {
+		deets.Host = globalConfig.DB.SocketInstance
+		deets.Database = globalConfig.DB.Database
+		deets.User = globalConfig.DB.Username
+		deets.Password = globalConfig.DB.Password
+	}
 
-	u, _ := url.Parse(globalConfig.DB.URL)
-	processedUrl := globalConfig.DB.URL
-	if len(u.Query()) != 0 {
-		processedUrl = fmt.Sprintf("%s&application_name=gotrue_migrations", processedUrl)
-	} else {
-		processedUrl = fmt.Sprintf("%s?application_name=gotrue_migrations", processedUrl)
+	if deets.Host == "" && deets.URL == "" {
+		panic("No database host or URL provided")
 	}
-	deets := &pop.ConnectionDetails{
-		Dialect: globalConfig.DB.Driver,
-		URL:     processedUrl,
-	}
+
 	deets.Options = map[string]string{
 		"migration_table_name": "schema_migrations",
 		"Namespace":            globalConfig.DB.Namespace,
