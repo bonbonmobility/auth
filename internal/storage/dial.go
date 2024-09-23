@@ -65,29 +65,16 @@ func Dial(config *conf.GlobalConfiguration) (*Connection, error) {
 		options["pool_max_conn_idle_time"] = config.DB.ConnMaxIdleTime.String()
 	}
 
-	deets := &pop.ConnectionDetails{
+	db, err := pop.NewConnection(&pop.ConnectionDetails{
 		Dialect:         config.DB.Driver,
 		Driver:          driver,
+		URL:             config.DB.URL,
 		Pool:            config.DB.MaxPoolSize,
 		IdlePool:        config.DB.MaxIdlePoolSize,
 		ConnMaxLifetime: config.DB.ConnMaxLifetime,
 		ConnMaxIdleTime: config.DB.ConnMaxIdleTime,
 		Options:         options,
-	}
-	if config.DB.URL != "" {
-		deets.URL = config.DB.URL
-	} else if config.DB.SocketInstance != "" {
-		deets.Host = config.DB.SocketInstance
-		deets.Database = config.DB.Database
-		deets.User = config.DB.Username
-		deets.Password = config.DB.Password
-	}
-
-	if deets.Host == "" && deets.URL == "" {
-		panic("No database host or URL provided")
-	}
-
-	db, err := pop.NewConnection(deets)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "opening database connection")
 	}
