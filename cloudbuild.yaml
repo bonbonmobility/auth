@@ -1,0 +1,61 @@
+steps:
+  # Send Deploy Status to Discord including logs detail url
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: Send Deploy Status to Discord
+    entrypoint: bash
+    args:
+      - '-c'
+      - >-
+        curl -H "Content-Type: application/json" -X POST -d '{"content": "Build $_SERVICE_NAME. [Logs](http://34.87.1.72/explore?panes=%7B%22Qeo%22:%7B%22datasource%22:%22c501984a-5966-44f6-8d93-548b95886fb0%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22datasource%22:%7B%22type%22:%22googlecloud-logging-datasource%22,%22uid%22:%22c501984a-5966-44f6-8d93-548b95886fb0%22%7D,%22queryText%22:%22resource.type%3D%5C%22build%5C%22%20AND%20resource.labels.build_id%3D%5C%22$BUILD_ID%5C%22%22,%22projectId%22:%22bonboncar%22%7D%5D,%22range%22:%7B%22from%22:%22now-2d%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1)"}' https://discord.com/api/webhooks/$_DISCORD_WEBHOOK_ID/$_DISCORD_WEBHOOK_TOKEN
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '-t'
+      - >-
+        $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+      - .
+      - '-f'
+      - ./Dockerfile
+      # - --build-arg=APP=$_SERVICE_NAME
+    id: Build
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+    id: Push
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - services
+      - update
+      - $_SERVICE_NAME
+      - '--platform=managed'
+      - >-
+        --image=$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+      - >-
+        --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
+      - '--region=$_DEPLOY_REGION'
+      - '--quiet'
+    id: Deploy
+    entrypoint: gcloud
+images:
+  - >-
+    $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+options:
+  # machineType: E2_HIGHCPU_8
+  dynamicSubstitutions: true
+  automapSubstitutions: true
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _DEPLOY_REGION: asia-southeast1
+  _AR_HOSTNAME: asia-southeast1-docker.pkg.dev
+  _PLATFORM: managed
+  _SERVICE_NAME: bonbon-api
+  _DISCORD_WEBHOOK_ID: "1186216115135856721"
+  _DISCORD_WEBHOOK_TOKEN: V4ll_40wOm68kAqnipEZsEd4Ir4nT_10z7BHnj-ReplY8ybRqTwVLv34wngwEjdxFUc6
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - gcp-cloud-build-deploy-cloud-run-managed
+  - bonbon-api
