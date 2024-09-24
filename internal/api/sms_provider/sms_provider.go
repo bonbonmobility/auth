@@ -48,6 +48,8 @@ func GetSmsProvider(config conf.GlobalConfiguration) (SmsProvider, error) {
 		return NewVonageProvider(config.Sms.Vonage)
 	case "twilio_verify":
 		return NewTwilioVerifyProvider(config.Sms.TwilioVerify)
+	case "vietguys":
+		return NewVietguysProvider(config.Sms.Vietguys)
 	default:
 		return nil, fmt.Errorf("sms Provider %s could not be found", name)
 	}

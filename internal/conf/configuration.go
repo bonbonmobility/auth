@@ -384,6 +384,7 @@ type SmsProviderConfiguration struct {
 	Messagebird  MessagebirdProviderConfiguration  `json:"messagebird"`
 	Textlocal    TextlocalProviderConfiguration    `json:"textlocal"`
 	Vonage       VonageProviderConfiguration       `json:"vonage"`
+	Vietguys     VietguysProviderConfiguration     `json:"vietguys"`
 }
 
 func (c *SmsProviderConfiguration) GetTestOTP(phone string, now time.Time) (string, bool) {
@@ -411,6 +412,12 @@ type TwilioVerifyProviderConfiguration struct {
 type MessagebirdProviderConfiguration struct {
 	AccessKey  string `json:"access_key" split_words:"true"`
 	Originator string `json:"originator" split_words:"true"`
+}
+
+type VietguysProviderConfiguration struct {
+	Username string `json:"username" split_words:"true"`
+	Token    string `json:"token" split_words:"true"`
+	From     string `json:"from" split_words:"true"`
 }
 
 type TextlocalProviderConfiguration struct {
@@ -966,6 +973,16 @@ func (t *MessagebirdProviderConfiguration) Validate() error {
 	}
 	if t.Originator == "" {
 		return errors.New("missing Messagebird originator")
+	}
+	return nil
+}
+
+func (t *VietguysProviderConfiguration) Validate() error {
+	if t.Username == "" {
+		return errors.New("missing Vietguys user name")
+	}
+	if t.Token == "" {
+		return errors.New("missing Vietguys token")
 	}
 	return nil
 }
