@@ -182,6 +182,7 @@ func (a *API) SmsOtp(w http.ResponseWriter, r *http.Request) error {
 		}
 		return sendJSON(w, http.StatusOK, make(map[string]string))
 	}
+	
 	if user.IsBanned() {
 		return forbiddenError(ErrorCodeUserBanned, "User is banned")
 	}
