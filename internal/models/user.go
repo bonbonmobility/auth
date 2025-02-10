@@ -668,7 +668,7 @@ func FindUserWithRefreshToken(tx *storage.Connection, token string, forUpdate bo
 func FindUsersInAudience(tx *storage.Connection, aud string, pageParams *Pagination, sortParams *SortParams, filter string) ([]*User, error) {
 	users := []*User{}
 	q := tx.Q().Where("instance_id = ? and aud = ?", uuid.Nil, aud)
-
+	q = q.Select("id", "email", "phone", "cofirmation_token", "raw_user_meta_data->>'full_name' as full_name")
 	if filter != "" {
 		lf := "%" + filter + "%"
 		// we must specify the collation in order to get case insensitive search for the JSON column
