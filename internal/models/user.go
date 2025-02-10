@@ -33,7 +33,7 @@ type User struct {
 	Phone            storage.NullString `json:"phone" db:"phone"`
 	PhoneConfirmedAt *time.Time         `json:"phone_confirmed_at,omitempty" db:"phone_confirmed_at"`
 
-	ConfirmationToken  string     `json:"confirmation_token,omitempty" db:"confirmation_token"`
+	ConfirmationToken  string     `json:"confirmation_token" db:"confirmation_token"`
 	ConfirmationSentAt *time.Time `json:"confirmation_sent_at,omitempty" db:"confirmation_sent_at"`
 
 	// For backward compatibility only. Use EmailConfirmedAt or PhoneConfirmedAt instead.
