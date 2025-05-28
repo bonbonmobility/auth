@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/didip/tollbooth/v5"
+	// "github.com/didip/tollbooth/v5"
 	"github.com/supabase/auth/internal/hooks"
 
 	"github.com/pkg/errors"
@@ -45,7 +45,7 @@ func formatPhoneNumber(phone string) string {
 
 // sendPhoneConfirmation sends an otp to the user's phone number
 func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, user *models.User, phone, otpType string, channel string) (string, error) {
-	ctx := r.Context()
+	// ctx := r.Context()
 	config := a.config
 
 	var token *string
