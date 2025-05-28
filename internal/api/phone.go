@@ -89,7 +89,7 @@ func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, use
 	// not using test OTPs
 	if otp == "" {
 		// apply rate limiting before the sms is sent out
-		limiter := getLimiter(ctx)
+		// limiter := getLimiter(ctx)
 		// if limiter != nil {
 		// 	if err := tollbooth.LimitByKeys(limiter.PhoneLimiter, []string{"phone_functions"}); err != nil {
 		// 		return "", tooManyRequestsError(ErrorCodeOverSMSSendRateLimit, "SMS rate limit exceeded")
