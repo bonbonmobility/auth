@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/sethvargo/go-password/password"
+	"github.com/sirupsen/logrus"
 	"github.com/supabase/auth/internal/api/sms_provider"
 	"github.com/supabase/auth/internal/conf"
 	"github.com/supabase/auth/internal/models"
@@ -121,6 +122,7 @@ func (a *API) SmsOtp(w http.ResponseWriter, r *http.Request) error {
 	if err := params.Validate(config); err != nil {
 		return err
 	}
+	logrus.WithField("phone", params.Phone).Info("API called with phone")
 
 	var isNewUser bool
 	aud := a.requestAud(ctx, r)
@@ -182,7 +184,7 @@ func (a *API) SmsOtp(w http.ResponseWriter, r *http.Request) error {
 		}
 		return sendJSON(w, http.StatusOK, make(map[string]string))
 	}
-	
+
 	if user.IsBanned() {
 		return forbiddenError(ErrorCodeUserBanned, "User is banned")
 	}
