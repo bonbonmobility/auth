@@ -15,6 +15,7 @@ import (
 	"github.com/supabase/auth/internal/models"
 	"github.com/supabase/auth/internal/observability"
 	"github.com/supabase/auth/internal/security"
+	"github.com/supabase/auth/internal/utilities"
 
 	"github.com/didip/tollbooth/v5"
 	"github.com/didip/tollbooth/v5/limiter"
@@ -129,6 +130,24 @@ func (a *API) requireEmailProvider(w http.ResponseWriter, req *http.Request) (co
 
 	if !config.External.Email.Enabled {
 		return nil, badRequestError(ErrorCodeEmailProviderDisabled, "Email logins are disabled")
+	}
+
+	return ctx, nil
+}
+
+func (a *API) blockIPBlacklist(w http.ResponseWriter, req *http.Request) (context.Context, error) {
+	ctx := req.Context()
+	config := a.config
+
+	if len(config.Security.IPBlacklist) == 0 {
+		return ctx, nil
+	}
+
+	remoteAddr := utilities.GetIPAddress(req)
+	for _, ip := range config.Security.IPBlacklist {
+		if remoteAddr == strings.TrimSpace(ip) {
+			return nil, forbiddenError(ErrorCodeNoAuthorization, "Denied")
+		}
 	}
 
 	return ctx, nil

@@ -511,6 +511,7 @@ type SecurityConfiguration struct {
 	ManualLinkingEnabled                  bool                 `json:"manual_linking_enabled" split_words:"true" default:"false"`
 
 	DBEncryption DatabaseEncryptionConfiguration `json:"database_encryption" split_words:"true"`
+	IPBlacklist  []string                      `json:"ip_blacklist" split_words:"true"`
 }
 
 func (c *SecurityConfiguration) Validate() error {
