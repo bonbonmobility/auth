@@ -84,6 +84,8 @@ func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, use
 	if testOTP, ok := config.Sms.GetTestOTP(phone, now); ok {
 		otp = testOTP
 		messageID = "test-otp"
+		msg := fmt.Sprintf("🧪 **Test OTP Alert**\nPhone: `%s` used a Test OTP: `%s`", phone, otp)
+		utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
 	}
 
 	// not using test OTPs
@@ -99,6 +101,10 @@ func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, use
 		if err != nil {
 			return "", internalServerError("error generating otp").WithInternalError(err)
 		}
+
+		msg := fmt.Sprintf("📧 **SMS OTP Created**\nPhone: `%s` was sent an OTP: `%s`", phone, otp)
+		utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
+
 		if config.Hook.SendSMS.Enabled {
 			input := hooks.SendSMSInput{
 				User: user,

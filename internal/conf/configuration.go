@@ -512,6 +512,7 @@ type SecurityConfiguration struct {
 
 	DBEncryption DatabaseEncryptionConfiguration `json:"database_encryption" split_words:"true"`
 	IPBlacklist  []string                      `json:"ip_blacklist" split_words:"true"`
+	DiscordWebhookURL string                   `json:"discord_webhook_url" split_words:"true"`
 }
 
 func (c *SecurityConfiguration) Validate() error {

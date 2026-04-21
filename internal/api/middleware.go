@@ -146,6 +146,9 @@ func (a *API) blockIPBlacklist(w http.ResponseWriter, req *http.Request) (contex
 	remoteAddr := utilities.GetIPAddress(req)
 	for _, ip := range config.Security.IPBlacklist {
 		if remoteAddr == strings.TrimSpace(ip) {
+			msg := fmt.Sprintf("🛡️ **IP Blacklist Alert**\nIP: `%s` attempted to call `%s %s`", remoteAddr, req.Method, req.URL.Path)
+			utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
+			observability.GetLogEntry(req).Entry.WithField("remote_addr", remoteAddr).Warn("Access denied from blocked IP address")
 			return nil, forbiddenError(ErrorCodeNoAuthorization, "Denied")
 		}
 	}
