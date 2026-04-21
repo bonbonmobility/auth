@@ -16,6 +16,7 @@ import (
 	"github.com/supabase/auth/internal/crypto"
 	"github.com/supabase/auth/internal/models"
 	"github.com/supabase/auth/internal/storage"
+	"github.com/supabase/auth/internal/utilities"
 )
 
 var e164Format = regexp.MustCompile("^[1-9][0-9]{1,14}$")
