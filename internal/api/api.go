@@ -100,6 +100,7 @@ func NewAPIWithVersion(globalConfig *conf.GlobalConfiguration, db *storage.Conne
 	r.UseBypass(logger)
 	r.UseBypass(xffmw.Handler)
 	r.UseBypass(recoverer)
+	r.UseBypass(api.ipRateLimitMiddleware())
 
 	if globalConfig.API.MaxRequestDuration > 0 {
 		r.UseBypass(timeoutMiddleware(globalConfig.API.MaxRequestDuration))

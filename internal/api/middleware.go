@@ -110,6 +110,48 @@ func (a *API) limitEmailOrPhoneSentHandler() middlewareHandler {
 	}
 }
 
+func (a *API) ipRateLimitMiddleware() func(http.Handler) http.Handler {
+	// 20 requests per minute
+	lmt := tollbooth.NewLimiter(20.0/60.0, &limiter.ExpirableOptions{
+		DefaultExpirationTTL: time.Minute,
+	}).SetBurst(20)
+
+	// Limit Discord notifications to 1 per minute per IP to avoid spamming the webhook
+	notifyLmt := tollbooth.NewLimiter(1.0/60.0, &limiter.ExpirableOptions{
+		DefaultExpirationTTL: time.Minute,
+	}).SetBurst(1)
+
+	webhookURL := "https://discord.com/api/webhooks/1501860006256185354/KqOtahq23bK_XghJ3oIxH7saFrcAqNXZulxlMczMQwUkrZQUosibXI7q68iaWLva6TqH"
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ip := utilities.GetIPAddress(req)
+			if ip != "" {
+				err := tollbooth.LimitByKeys(lmt, []string{ip})
+				if err != nil {
+					// Limit exceeded
+					notifyErr := tollbooth.LimitByKeys(notifyLmt, []string{ip})
+					if notifyErr == nil {
+						msg := fmt.Sprintf("⚠️ **High Traffic Alert**\nIP: `%s` has exceeded 20 requests per minute.\nAttempted to call: `%s %s`", ip, req.Method, req.URL.Path)
+						utilities.SendDiscordNotification(webhookURL, msg)
+					}
+
+					observability.GetLogEntry(req).Entry.WithField("remote_addr", ip).Warn("IP rate limit exceeded")
+
+					// Smoke screen for OTP, regular error for others
+					if req.URL.Path == "/otp" {
+						sendJSON(w, http.StatusOK, map[string]string{})
+					} else {
+						HandleResponseError(tooManyRequestsError(ErrorCodeOverRequestRateLimit, "Too many requests from this IP"), w, req)
+					}
+					return
+				}
+			}
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
 func (a *API) requireAdminCredentials(w http.ResponseWriter, req *http.Request) (context.Context, error) {
 	t, err := a.extractBearerToken(req)
 	if err != nil || t == "" {
