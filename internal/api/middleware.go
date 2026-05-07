@@ -111,10 +111,11 @@ func (a *API) limitEmailOrPhoneSentHandler() middlewareHandler {
 }
 
 func (a *API) ipRateLimitMiddleware() func(http.Handler) http.Handler {
-	// 20 requests per minute
-	lmt := tollbooth.NewLimiter(20.0/60.0, &limiter.ExpirableOptions{
+	// Configure global IP rate limiter using env config
+	limitPerMin := a.config.RateLimitIp
+	lmt := tollbooth.NewLimiter(limitPerMin/60.0, &limiter.ExpirableOptions{
 		DefaultExpirationTTL: time.Minute,
-	}).SetBurst(20)
+	}).SetBurst(int(limitPerMin))
 
 	// Limit Discord notifications to 1 per minute per IP to avoid spamming the webhook
 	notifyLmt := tollbooth.NewLimiter(1.0/60.0, &limiter.ExpirableOptions{
@@ -126,13 +127,25 @@ func (a *API) ipRateLimitMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			ip := utilities.GetIPAddress(req)
-			if ip != "" {
+			
+			// Exclude whitelisted IPs from rate limits
+			isWhitelisted := false
+			if len(a.config.Security.IPWhitelist) > 0 {
+				for _, whitelistedIP := range a.config.Security.IPWhitelist {
+					if ip == strings.TrimSpace(whitelistedIP) {
+						isWhitelisted = true
+						break
+					}
+				}
+			}
+
+			if ip != "" && !isWhitelisted {
 				err := tollbooth.LimitByKeys(lmt, []string{ip})
 				if err != nil {
 					// Limit exceeded
 					notifyErr := tollbooth.LimitByKeys(notifyLmt, []string{ip})
 					if notifyErr == nil {
-						msg := fmt.Sprintf("⚠️ **High Traffic Alert**\nIP: `%s` has exceeded 20 requests per minute.\nAttempted to call: `%s %s`", ip, req.Method, req.URL.Path)
+						msg := fmt.Sprintf("⚠️ **High Traffic Alert**\nIP: `%s` has exceeded %v requests per minute.\nAttempted to call: `%s %s`", ip, limitPerMin, req.Method, req.URL.Path)
 						utilities.SendDiscordNotification(webhookURL, msg)
 					}
 
