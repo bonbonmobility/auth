@@ -119,7 +119,11 @@ func NewAPIWithVersion(globalConfig *conf.GlobalConfiguration, db *storage.Conne
 	r.Get("/.well-known/jwks.json", api.Jwks)
 
 	r.Route("/callback", func(r *router) {
-		r.Use(api.blockIPBlacklist)
+		if globalConfig.Security.IPFilterMode == "whitelist" {
+			r.UseBypass(api.allowIPWhitelist)
+		} else {
+			r.UseBypass(api.blockIPBlacklist)
+		}
 		r.Use(api.isValidExternalHost)
 		r.Use(api.loadFlowState)
 
@@ -128,7 +132,11 @@ func NewAPIWithVersion(globalConfig *conf.GlobalConfiguration, db *storage.Conne
 	})
 
 	r.Route("/", func(r *router) {
-		r.Use(api.blockIPBlacklist)
+		if globalConfig.Security.IPFilterMode == "whitelist" {
+			r.UseBypass(api.allowIPWhitelist)
+		} else {
+			r.UseBypass(api.blockIPBlacklist)
+		}
 		r.Use(api.isValidExternalHost)
 
 		r.Get("/settings", api.Settings)

@@ -510,9 +510,11 @@ type SecurityConfiguration struct {
 	UpdatePasswordRequireReauthentication bool                 `json:"update_password_require_reauthentication" split_words:"true"`
 	ManualLinkingEnabled                  bool                 `json:"manual_linking_enabled" split_words:"true" default:"false"`
 
-	DBEncryption DatabaseEncryptionConfiguration `json:"database_encryption" split_words:"true"`
-	IPBlacklist  []string                      `json:"ip_blacklist" split_words:"true"`
-	DiscordWebhookURL string                   `json:"discord_webhook_url" split_words:"true"`
+	DBEncryption      DatabaseEncryptionConfiguration `json:"database_encryption" split_words:"true"`
+	IPFilterMode      string                          `json:"ip_filter_mode" split_words:"true" default:"blacklist"`
+	IPBlacklist       []string                        `json:"ip_blacklist" split_words:"true"`
+	IPWhitelist       []string                        `json:"ip_whitelist" split_words:"true"`
+	DiscordWebhookURL string                          `json:"discord_webhook_url" split_words:"true"`
 }
 
 func (c *SecurityConfiguration) Validate() error {
@@ -522,6 +524,10 @@ func (c *SecurityConfiguration) Validate() error {
 
 	if err := c.DBEncryption.Validate(); err != nil {
 		return err
+	}
+
+	if c.IPFilterMode != "blacklist" && c.IPFilterMode != "whitelist" {
+		return fmt.Errorf("conf: ip_filter_mode must be either 'blacklist' or 'whitelist', got '%s'", c.IPFilterMode)
 	}
 
 	return nil

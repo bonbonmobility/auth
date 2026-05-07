@@ -135,25 +135,69 @@ func (a *API) requireEmailProvider(w http.ResponseWriter, req *http.Request) (co
 	return ctx, nil
 }
 
-func (a *API) blockIPBlacklist(w http.ResponseWriter, req *http.Request) (context.Context, error) {
-	ctx := req.Context()
-	config := a.config
+func (a *API) blockIPBlacklist(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		config := a.config
 
-	if len(config.Security.IPBlacklist) == 0 {
-		return ctx, nil
-	}
-
-	remoteAddr := utilities.GetIPAddress(req)
-	for _, ip := range config.Security.IPBlacklist {
-		if remoteAddr == strings.TrimSpace(ip) {
-			msg := fmt.Sprintf("🛡️ **IP Blacklist Alert**\nIP: `%s` attempted to call `%s %s`", remoteAddr, req.Method, req.URL.Path)
-			utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
-			observability.GetLogEntry(req).Entry.WithField("remote_addr", remoteAddr).Warn("Access denied from blocked IP address")
-			return nil, forbiddenError(ErrorCodeNoAuthorization, "Denied")
+		if len(config.Security.IPBlacklist) == 0 {
+			next.ServeHTTP(w, req)
+			return
 		}
-	}
 
-	return ctx, nil
+		remoteAddr := utilities.GetIPAddress(req)
+		for _, ip := range config.Security.IPBlacklist {
+			if remoteAddr == strings.TrimSpace(ip) {
+				msg := fmt.Sprintf("🛡️ **IP Blacklist Alert**\nIP: `%s` attempted to call `%s %s`", remoteAddr, req.Method, req.URL.Path)
+				utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
+				observability.GetLogEntry(req).Entry.WithField("remote_addr", remoteAddr).Warn("Access denied from blocked IP address")
+
+				if req.URL.Path == "/otp" {
+					sendJSON(w, http.StatusOK, map[string]string{})
+				} else {
+					HandleResponseError(forbiddenError(ErrorCodeNoAuthorization, "Denied"), w, req)
+				}
+				return
+			}
+		}
+
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
+func (a *API) allowIPWhitelist(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		config := a.config
+
+		if len(config.Security.IPWhitelist) == 0 {
+			next.ServeHTTP(w, req)
+			return
+		}
+
+		userAgent := req.Header.Get("User-Agent")
+		if strings.Contains(userAgent, "Dart") {
+			next.ServeHTTP(w, req)
+			return
+		}
+
+		remoteAddr := utilities.GetIPAddress(req)
+		for _, ip := range config.Security.IPWhitelist {
+			if remoteAddr == strings.TrimSpace(ip) {
+				next.ServeHTTP(w, req)
+				return
+			}
+		}
+
+		msg := fmt.Sprintf("🛡️ **IP Whitelist Alert**\nIP: `%s` attempted to call `%s %s` but is not whitelisted", remoteAddr, req.Method, req.URL.Path)
+		utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
+		observability.GetLogEntry(req).Entry.WithField("remote_addr", remoteAddr).Warn("Access denied from non-whitelisted IP address")
+
+		if req.URL.Path == "/otp" {
+			sendJSON(w, http.StatusOK, map[string]string{})
+		} else {
+			HandleResponseError(forbiddenError(ErrorCodeNoAuthorization, "Denied"), w, req)
+		}
+	})
 }
 
 func (a *API) verifyCaptcha(w http.ResponseWriter, req *http.Request) (context.Context, error) {
