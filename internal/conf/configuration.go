@@ -416,9 +416,11 @@ type MessagebirdProviderConfiguration struct {
 }
 
 type VietguysProviderConfiguration struct {
-	Username string `json:"username" split_words:"true"`
-	Token    string `json:"token" split_words:"true"`
-	From     string `json:"from" split_words:"true"`
+	Username       string `json:"username" split_words:"true"`
+	Token          string `json:"token" split_words:"true"`
+	From           string `json:"from" split_words:"true"`
+	BookingApiHost string `json:"booking_api_host" split_words:"true"`
+	AdminApiKey    string `json:"admin_api_key" split_words:"true"`
 }
 
 type TextlocalProviderConfiguration struct {
@@ -989,6 +991,15 @@ func (t *MessagebirdProviderConfiguration) Validate() error {
 func (t *VietguysProviderConfiguration) Validate() error {
 	if t.Username == "" {
 		return errors.New("missing Vietguys user name")
+	}
+	if t.BookingApiHost != "" || t.AdminApiKey != "" {
+		if t.BookingApiHost == "" {
+			return errors.New("missing Vietguys booking API host")
+		}
+		if t.AdminApiKey == "" {
+			return errors.New("missing Vietguys admin API key")
+		}
+		return nil
 	}
 	if t.Token == "" {
 		return errors.New("missing Vietguys token")

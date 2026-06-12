@@ -9,21 +9,24 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/supabase/auth/internal/conf"
 )
 
 const (
 	vietGuysSmsUrl = "https://cloudsms4.vietguys.biz:4438/api/index.php"
-	// vietGuysAuthUrl = "https://api-v2.vietguys.biz:4438/token/v1/refresh"
 )
 
 type VietguysProvider struct {
 	Config        *conf.VietguysProviderConfiguration
 	authToken     string
 	refreshToken  string
-	authExpiredAt int
+	authExpiredAt int64
+	mu            sync.Mutex
 }
 
 type VietguysReponse struct {
@@ -34,7 +37,17 @@ type VietguysReponse struct {
 	Carrier string                 `json:"carrier"`
 }
 
-// Creates a SmsProvider with the Messagebird Config
+type bookingSmsTokensResponse struct {
+	Success bool              `json:"success"`
+	Data    []bookingSmsToken `json:"data"`
+}
+
+type bookingSmsToken struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiredAt    string `json:"expired_at"`
+}
+
 func NewVietguysProvider(config conf.VietguysProviderConfiguration) (SmsProvider, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -54,12 +67,16 @@ func (t *VietguysProvider) SendMessage(phone, message, channel, otp string) (str
 	}
 }
 
-// Send an SMS containing the OTP with Messagebird's API
 func (t *VietguysProvider) SendSms(phone string, message string) (string, error) {
+	token, err := t.getToken()
+	if err != nil {
+		return "", err
+	}
+
 	body := url.Values{
 		"from":  {t.Config.From},
 		"u":     {t.Config.Username},
-		"pwd":   {t.Config.Token},
+		"pwd":   {token},
 		"phone": {phone},
 		"sms":   {message},
 		"bid":   {fmt.Sprintf("%d", rand.Intn(1000000000))},
@@ -86,7 +103,6 @@ func (t *VietguysProvider) SendSms(phone string, message string) (string, error)
 		return "", errors.New(string(respBody))
 	}
 
-	// validate sms status
 	resp := &VietguysReponse{}
 	derr := json.Unmarshal(respBody, resp)
 	if derr != nil {
@@ -100,64 +116,77 @@ func (t *VietguysProvider) SendSms(phone string, message string) (string, error)
 	return resp.Msgid, nil
 }
 
-// func (t *VietguysProvider) auth() (string, error) {
-// 	if t.authExpiredAt > int(time.Now().Unix())-300 {
-// 		return t.authToken, nil
-// 	}
+func (t *VietguysProvider) getToken() (string, error) {
+	if t.Config.BookingApiHost == "" {
+		return t.Config.Token, nil
+	}
 
-// 	body := map[string]string{
-// 		"username": t.Config.Username,
-// 		"type":     "refresh_token",
-// 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-// 	data, err := json.Marshal(body)
-// 	if err != nil {
-// 		return "", err
-// 	}
+	now := time.Now().Unix()
+	if t.authToken != "" && t.authExpiredAt > now+300 {
+		return t.authToken, nil
+	}
 
-// 	client := &http.Client{Timeout: defaultTimeout}
-// 	r, err := http.NewRequest("POST", vietGuysAuthUrl, bytes.NewReader(data))
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	r.Header.Add("Content-Type", "application/json")
-// 	token := t.refreshToken
-// 	if len(token) == 0 {
-// 		token = t.Config.Token
-// 	}
-// 	r.Header.Add("Refresh-Token", token)
-// 	res, err := client.Do(r)
-// 	if err != nil {
-// 		return "", err
-// 	}
+	token, err := t.fetchTokenFromBookingAPI()
+	if err != nil {
+		return "", err
+	}
 
-// 	respBody, err := readBody(res.Body)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	if res.StatusCode != http.StatusOK {
-// 		return "", errors.New(string(respBody))
-// 	}
+	return token, nil
+}
 
-// 	// validate sms status
-// 	resp := &VietguysReponse{}
-// 	derr := json.Unmarshal(respBody, resp)
-// 	if derr != nil {
-// 		return "", derr
-// 	}
+func (t *VietguysProvider) fetchTokenFromBookingAPI() (string, error) {
+	apiURL := strings.TrimSuffix(t.Config.BookingApiHost, "/") + "/api/v1/sms-tokens"
 
-// 	if resp.Error != 0 {
-// 		return "", fmt.Errorf(string(respBody))
-// 	}
+	client := &http.Client{Timeout: defaultTimeout}
+	r, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	r.Header.Set("x-api-key", t.Config.AdminApiKey)
 
-// 	fmt.Println("----------------------------", resp.Data)
-// 	t.authToken = resp.Data["access_token"].(string)
-// 	t.refreshToken = resp.Data["refresh_token"].(string)
-// 	t.authExpiredAt = int(resp.Data["expired_at"].(float64) / 1000)
-// 	fmt.Println("----------------------------", t.authToken, t.authExpiredAt)
+	res, err := client.Do(r)
+	if err != nil {
+		return "", err
+	}
 
-// 	return t.authToken, nil
-// }
+	respBody, err := readBody(res.Body)
+	if err != nil {
+		return "", err
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("booking API returned status %d: %s", res.StatusCode, string(respBody))
+	}
+
+	resp := &bookingSmsTokensResponse{}
+	if err := json.Unmarshal(respBody, resp); err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New("booking API returned unsuccessful response")
+	}
+	if len(resp.Data) == 0 {
+		return "", errors.New("booking API returned no SMS tokens")
+	}
+
+	token := resp.Data[0]
+	if token.AccessToken == "" {
+		return "", errors.New("booking API returned empty access token")
+	}
+
+	expiredAtMs, err := strconv.ParseInt(token.ExpiredAt, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("invalid expired_at from booking API: %w", err)
+	}
+
+	t.authToken = token.AccessToken
+	t.refreshToken = token.RefreshToken
+	t.authExpiredAt = expiredAtMs / 1000
+
+	return t.authToken, nil
+}
 
 func readBody(rc io.ReadCloser) ([]byte, error) {
 	defer rc.Close()
