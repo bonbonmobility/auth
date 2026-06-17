@@ -16,6 +16,7 @@ import (
 	"github.com/supabase/auth/internal/conf"
 	"github.com/supabase/auth/internal/crypto"
 	"github.com/supabase/auth/internal/models"
+	"github.com/supabase/auth/internal/storage"
 )
 
 type UserTestSuite struct {
@@ -449,7 +450,7 @@ func (ts *UserTestSuite) TestUserUpdatePasswordReauthentication() {
 	require.NotEmpty(ts.T(), u.ReauthenticationSentAt)
 
 	// update reauthentication token to a known token
-	u.ReauthenticationToken = crypto.GenerateTokenHash(u.GetEmail(), "123456")
+	u.ReauthenticationToken = storage.NullString(crypto.GenerateTokenHash(u.GetEmail(), "123456"))
 	require.NoError(ts.T(), ts.API.db.Update(u))
 
 	// update password with reauthentication token

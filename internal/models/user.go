@@ -21,8 +21,8 @@ import (
 type User struct {
 	ID uuid.UUID `json:"id" db:"id"`
 
-	Aud       storage.NullString `json:"aud" db:"aud"`
-	Role      storage.NullString `json:"role" db:"role"`
+	Aud       string             `json:"aud" db:"aud"`
+	Role      string             `json:"role" db:"role"`
 	Email     storage.NullString `json:"email" db:"email"`
 	IsSSOUser bool               `json:"-" db:"is_sso_user"`
 
@@ -208,16 +208,6 @@ func (u *User) HasRole(roleName string) bool {
 // GetEmail returns the user's email as a string
 func (u *User) GetEmail() string {
 	return string(u.Email)
-}
-
-// GetAud returns the user's audience as a string
-func (u *User) GetAud() string {
-	return string(u.Aud)
-}
-
-// GetRole returns the user's role as a string
-func (u *User) GetRole() string {
-	return string(u.Role)
 }
 
 // GetPhone returns the user's phone number as a string

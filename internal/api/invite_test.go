@@ -17,6 +17,7 @@ import (
 	"github.com/supabase/auth/internal/conf"
 	"github.com/supabase/auth/internal/crypto"
 	"github.com/supabase/auth/internal/models"
+	"github.com/supabase/auth/internal/storage"
 )
 
 type InviteTestSuite struct {
@@ -208,10 +209,10 @@ func (ts *InviteTestSuite) TestVerifyInvite() {
 			user.InvitedAt = &now
 			user.ConfirmationSentAt = &now
 			user.EncryptedPassword = nil
-			user.ConfirmationToken = crypto.GenerateTokenHash(c.email, c.requestBody["token"].(string))
+			user.ConfirmationToken = storage.NullString(crypto.GenerateTokenHash(c.email, c.requestBody["token"].(string)))
 			require.NoError(ts.T(), err)
 			require.NoError(ts.T(), ts.API.db.Create(user))
-			require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, user.ID, user.GetEmail(), user.ConfirmationToken, models.ConfirmationToken))
+			require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, user.ID, user.GetEmail(), user.GetConfirmationToken(), models.ConfirmationToken))
 
 			// Find test user
 			_, err = models.FindUserByEmailAndAudience(ts.API.db, c.email, ts.Config.JWT.Aud)
@@ -281,7 +282,7 @@ func (ts *InviteTestSuite) TestInviteExternalGitlab() {
 	require.NoError(ts.T(), err)
 
 	// get redirect url w/ state
-	req = httptest.NewRequest(http.MethodGet, "http://localhost/authorize?provider=gitlab&invite_token="+user.ConfirmationToken, nil)
+	req = httptest.NewRequest(http.MethodGet, "http://localhost/authorize?provider=gitlab&invite_token="+user.GetConfirmationToken(), nil)
 	w = httptest.NewRecorder()
 	ts.API.handler.ServeHTTP(w, req)
 	ts.Require().Equal(http.StatusFound, w.Code)
@@ -373,7 +374,7 @@ func (ts *InviteTestSuite) TestInviteExternalGitlab_MismatchedEmails() {
 	require.NoError(ts.T(), err)
 
 	// get redirect url w/ state
-	req = httptest.NewRequest(http.MethodGet, "http://localhost/authorize?provider=gitlab&invite_token="+user.ConfirmationToken, nil)
+	req = httptest.NewRequest(http.MethodGet, "http://localhost/authorize?provider=gitlab&invite_token="+user.GetConfirmationToken(), nil)
 	w = httptest.NewRecorder()
 	ts.API.handler.ServeHTTP(w, req)
 	ts.Require().Equal(http.StatusFound, w.Code)

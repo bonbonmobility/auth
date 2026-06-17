@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/supabase/auth/internal/conf"
 	"github.com/supabase/auth/internal/models"
+	"github.com/supabase/auth/internal/storage"
 )
 
 type ExternalTestSuite struct {
@@ -51,13 +52,13 @@ func (ts *ExternalTestSuite) createUser(providerId string, email string, name st
 	u, err := models.NewUser("", email, "test", ts.Config.JWT.Aud, userData)
 
 	if confirmationToken != "" {
-		u.ConfirmationToken = confirmationToken
+		u.ConfirmationToken = storage.NullString(confirmationToken)
 	}
 	ts.Require().NoError(err, "Error making new user")
 	ts.Require().NoError(ts.API.db.Create(u), "Error creating user")
 
 	if confirmationToken != "" {
-		ts.Require().NoError(models.CreateOneTimeToken(ts.API.db, u.ID, email, u.ConfirmationToken, models.ConfirmationToken), "Error creating one-time confirmation/invite token")
+		ts.Require().NoError(models.CreateOneTimeToken(ts.API.db, u.ID, email, u.GetConfirmationToken(), models.ConfirmationToken), "Error creating one-time confirmation/invite token")
 	}
 
 	i, err := models.NewIdentity(u, "email", map[string]interface{}{

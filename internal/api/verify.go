@@ -499,12 +499,12 @@ func (a *API) emailChangeVerify(r *http.Request, conn *storage.Connection, param
 
 			user.EmailChangeConfirmStatus = singleConfirmation
 
-			if params.Token == user.EmailChangeTokenCurrent || params.TokenHash == user.EmailChangeTokenCurrent || (currentOTT != nil && params.TokenHash == currentOTT.TokenHash) {
+			if params.Token == user.GetEmailChangeTokenCurrent() || params.TokenHash == user.GetEmailChangeTokenCurrent() || (currentOTT != nil && params.TokenHash == currentOTT.TokenHash) {
 				user.EmailChangeTokenCurrent = ""
 				if terr := models.ClearOneTimeTokenForUser(tx, user.ID, models.EmailChangeTokenCurrent); terr != nil {
 					return terr
 				}
-			} else if params.Token == user.EmailChangeTokenNew || params.TokenHash == user.EmailChangeTokenNew || (newOTT != nil && params.TokenHash == newOTT.TokenHash) {
+			} else if params.Token == user.GetEmailChangeTokenNew() || params.TokenHash == user.GetEmailChangeTokenNew() || (newOTT != nil && params.TokenHash == newOTT.TokenHash) {
 				user.EmailChangeTokenNew = ""
 				if terr := models.ClearOneTimeTokenForUser(tx, user.ID, models.EmailChangeTokenNew); terr != nil {
 					return terr
@@ -604,7 +604,7 @@ func (a *API) verifyTokenHash(conn *storage.Connection, params *VerifyParams) (*
 	case mail.EmailOTPVerification:
 		sentAt := user.ConfirmationSentAt
 		params.Type = "signup"
-		if user.RecoveryToken == params.TokenHash {
+		if user.GetRecoveryToken() == params.TokenHash {
 			sentAt = user.RecoverySentAt
 			params.Type = "magiclink"
 		}
@@ -662,22 +662,22 @@ func (a *API) verifyUserAndToken(conn *storage.Connection, params *VerifyParams,
 	switch params.Type {
 	case mail.EmailOTPVerification:
 		// if the type is emailOTPVerification, we'll check both the confirmation_token and recovery_token columns
-		if isOtpValid(tokenHash, user.ConfirmationToken, user.ConfirmationSentAt, config.Mailer.OtpExp) {
+		if isOtpValid(tokenHash, user.GetConfirmationToken(), user.ConfirmationSentAt, config.Mailer.OtpExp) {
 			isValid = true
 			params.Type = mail.SignupVerification
-		} else if isOtpValid(tokenHash, user.RecoveryToken, user.RecoverySentAt, config.Mailer.OtpExp) {
+		} else if isOtpValid(tokenHash, user.GetRecoveryToken(), user.RecoverySentAt, config.Mailer.OtpExp) {
 			isValid = true
 			params.Type = mail.MagicLinkVerification
 		} else {
 			isValid = false
 		}
 	case mail.SignupVerification, mail.InviteVerification:
-		isValid = isOtpValid(tokenHash, user.ConfirmationToken, user.ConfirmationSentAt, config.Mailer.OtpExp)
+		isValid = isOtpValid(tokenHash, user.GetConfirmationToken(), user.ConfirmationSentAt, config.Mailer.OtpExp)
 	case mail.RecoveryVerification, mail.MagicLinkVerification:
-		isValid = isOtpValid(tokenHash, user.RecoveryToken, user.RecoverySentAt, config.Mailer.OtpExp)
+		isValid = isOtpValid(tokenHash, user.GetRecoveryToken(), user.RecoverySentAt, config.Mailer.OtpExp)
 	case mail.EmailChangeVerification:
-		isValid = isOtpValid(tokenHash, user.EmailChangeTokenCurrent, user.EmailChangeSentAt, config.Mailer.OtpExp) ||
-			isOtpValid(tokenHash, user.EmailChangeTokenNew, user.EmailChangeSentAt, config.Mailer.OtpExp)
+		isValid = isOtpValid(tokenHash, user.GetEmailChangeTokenCurrent(), user.EmailChangeSentAt, config.Mailer.OtpExp) ||
+			isOtpValid(tokenHash, user.GetEmailChangeTokenNew(), user.EmailChangeSentAt, config.Mailer.OtpExp)
 	case phoneChangeVerification, smsVerification:
 		if testOTP, ok := config.Sms.GetTestOTP(params.Phone, time.Now()); ok {
 			if params.Token == testOTP {
@@ -687,11 +687,11 @@ func (a *API) verifyUserAndToken(conn *storage.Connection, params *VerifyParams,
 
 		phone := params.Phone
 		sentAt := user.ConfirmationSentAt
-		expectedToken := user.ConfirmationToken
+		expectedToken := user.GetConfirmationToken()
 		if params.Type == phoneChangeVerification {
 			phone = user.GetPhoneChange()
 			sentAt = user.PhoneChangeSentAt
-			expectedToken = user.PhoneChangeToken
+			expectedToken = user.GetPhoneChangeToken()
 		}
 
 		if !config.Hook.SendSMS.Enabled && config.Sms.IsTwilioVerifyProvider() {
