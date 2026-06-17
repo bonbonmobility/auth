@@ -21,8 +21,8 @@ import (
 type User struct {
 	ID uuid.UUID `json:"id" db:"id"`
 
-	Aud       string             `json:"aud" db:"aud"`
-	Role      string             `json:"role" db:"role"`
+	Aud       storage.NullString `json:"aud" db:"aud"`
+	Role      storage.NullString `json:"role" db:"role"`
 	Email     storage.NullString `json:"email" db:"email"`
 	IsSSOUser bool               `json:"-" db:"is_sso_user"`
 
@@ -33,26 +33,26 @@ type User struct {
 	Phone            storage.NullString `json:"phone" db:"phone"`
 	PhoneConfirmedAt *time.Time         `json:"phone_confirmed_at,omitempty" db:"phone_confirmed_at"`
 
-	ConfirmationToken  string     `json:"confirmation_token" db:"confirmation_token"`
+	ConfirmationToken  storage.NullString `json:"confirmation_token" db:"confirmation_token"`
 	ConfirmationSentAt *time.Time `json:"confirmation_sent_at,omitempty" db:"confirmation_sent_at"`
 
 	// For backward compatibility only. Use EmailConfirmedAt or PhoneConfirmedAt instead.
 	ConfirmedAt *time.Time `json:"confirmed_at,omitempty" db:"confirmed_at" rw:"r"`
 
-	RecoveryToken  string     `json:"-" db:"recovery_token"`
+	RecoveryToken  storage.NullString `json:"-" db:"recovery_token"`
 	RecoverySentAt *time.Time `json:"recovery_sent_at,omitempty" db:"recovery_sent_at"`
 
-	EmailChangeTokenCurrent  string             `json:"-" db:"email_change_token_current"`
-	EmailChangeTokenNew      string             `json:"-" db:"email_change_token_new"`
+	EmailChangeTokenCurrent  storage.NullString `json:"-" db:"email_change_token_current"`
+	EmailChangeTokenNew      storage.NullString `json:"-" db:"email_change_token_new"`
 	EmailChange              storage.NullString `json:"new_email,omitempty" db:"email_change"`
 	EmailChangeSentAt        *time.Time         `json:"email_change_sent_at,omitempty" db:"email_change_sent_at"`
 	EmailChangeConfirmStatus int                `json:"-" db:"email_change_confirm_status"`
 
-	PhoneChangeToken  string             `json:"-" db:"phone_change_token"`
+	PhoneChangeToken  storage.NullString `json:"-" db:"phone_change_token"`
 	PhoneChange       storage.NullString `json:"new_phone,omitempty" db:"phone_change"`
 	PhoneChangeSentAt *time.Time `json:"phone_change_sent_at,omitempty" db:"phone_change_sent_at"`
 
-	ReauthenticationToken  string     `json:"-" db:"reauthentication_token"`
+	ReauthenticationToken  storage.NullString `json:"-" db:"reauthentication_token"`
 	ReauthenticationSentAt *time.Time `json:"reauthentication_sent_at,omitempty" db:"reauthentication_sent_at"`
 
 	LastSignInAt *time.Time `json:"last_sign_in_at,omitempty" db:"last_sign_in_at"`
@@ -210,6 +210,16 @@ func (u *User) GetEmail() string {
 	return string(u.Email)
 }
 
+// GetAud returns the user's audience as a string
+func (u *User) GetAud() string {
+	return string(u.Aud)
+}
+
+// GetRole returns the user's role as a string
+func (u *User) GetRole() string {
+	return string(u.Role)
+}
+
 // GetPhone returns the user's phone number as a string
 func (u *User) GetPhone() string {
 	return string(u.Phone)
@@ -223,6 +233,30 @@ func (u *User) GetEmailChange() string {
 // GetPhoneChange returns the user's pending phone change as a string
 func (u *User) GetPhoneChange() string {
 	return string(u.PhoneChange)
+}
+
+func (u *User) GetConfirmationToken() string {
+	return string(u.ConfirmationToken)
+}
+
+func (u *User) GetRecoveryToken() string {
+	return string(u.RecoveryToken)
+}
+
+func (u *User) GetEmailChangeTokenCurrent() string {
+	return string(u.EmailChangeTokenCurrent)
+}
+
+func (u *User) GetEmailChangeTokenNew() string {
+	return string(u.EmailChangeTokenNew)
+}
+
+func (u *User) GetPhoneChangeToken() string {
+	return string(u.PhoneChangeToken)
+}
+
+func (u *User) GetReauthenticationToken() string {
+	return string(u.ReauthenticationToken)
 }
 
 // UpdateUserMetaData sets all user data from a map of updates,
