@@ -266,7 +266,7 @@ func FindUserByEmailChangeNewAndAudience(tx *storage.Connection, email, token, a
 		return nil, err
 	}
 
-	if user.Aud != aud && strings.EqualFold(user.EmailChange, email) {
+	if user.Aud != aud && strings.EqualFold(user.GetEmailChange(), email) {
 		return nil, UserNotFoundError{}
 	}
 

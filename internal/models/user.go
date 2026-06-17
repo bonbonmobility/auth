@@ -42,14 +42,14 @@ type User struct {
 	RecoveryToken  string     `json:"-" db:"recovery_token"`
 	RecoverySentAt *time.Time `json:"recovery_sent_at,omitempty" db:"recovery_sent_at"`
 
-	EmailChangeTokenCurrent  string     `json:"-" db:"email_change_token_current"`
-	EmailChangeTokenNew      string     `json:"-" db:"email_change_token_new"`
-	EmailChange              string     `json:"new_email,omitempty" db:"email_change"`
-	EmailChangeSentAt        *time.Time `json:"email_change_sent_at,omitempty" db:"email_change_sent_at"`
-	EmailChangeConfirmStatus int        `json:"-" db:"email_change_confirm_status"`
+	EmailChangeTokenCurrent  string             `json:"-" db:"email_change_token_current"`
+	EmailChangeTokenNew      string             `json:"-" db:"email_change_token_new"`
+	EmailChange              storage.NullString `json:"new_email,omitempty" db:"email_change"`
+	EmailChangeSentAt        *time.Time         `json:"email_change_sent_at,omitempty" db:"email_change_sent_at"`
+	EmailChangeConfirmStatus int                `json:"-" db:"email_change_confirm_status"`
 
-	PhoneChangeToken  string     `json:"-" db:"phone_change_token"`
-	PhoneChange       string     `json:"new_phone,omitempty" db:"phone_change"`
+	PhoneChangeToken  string             `json:"-" db:"phone_change_token"`
+	PhoneChange       storage.NullString `json:"new_phone,omitempty" db:"phone_change"`
 	PhoneChangeSentAt *time.Time `json:"phone_change_sent_at,omitempty" db:"phone_change_sent_at"`
 
 	ReauthenticationToken  string     `json:"-" db:"reauthentication_token"`
@@ -213,6 +213,16 @@ func (u *User) GetEmail() string {
 // GetPhone returns the user's phone number as a string
 func (u *User) GetPhone() string {
 	return string(u.Phone)
+}
+
+// GetEmailChange returns the user's pending email change as a string
+func (u *User) GetEmailChange() string {
+	return string(u.EmailChange)
+}
+
+// GetPhoneChange returns the user's pending phone change as a string
+func (u *User) GetPhoneChange() string {
+	return string(u.PhoneChange)
 }
 
 // UpdateUserMetaData sets all user data from a map of updates,
@@ -469,7 +479,7 @@ func (u *User) UpdateLastSignInAt(tx *storage.Connection) error {
 
 // ConfirmEmailChange confirm the change of email for a user
 func (u *User) ConfirmEmailChange(tx *storage.Connection, status int) error {
-	email := u.EmailChange
+	email := u.GetEmailChange()
 
 	u.Email = storage.NullString(email)
 	u.EmailChange = ""
@@ -520,7 +530,7 @@ func (u *User) ConfirmEmailChange(tx *storage.Connection, status int) error {
 // ConfirmPhoneChange confirms the change of phone for a user
 func (u *User) ConfirmPhoneChange(tx *storage.Connection) error {
 	now := time.Now()
-	phone := u.PhoneChange
+	phone := u.GetPhoneChange()
 
 	u.Phone = storage.NullString(phone)
 	u.PhoneChange = ""
@@ -813,8 +823,8 @@ func (u *User) RemoveUnconfirmedIdentities(tx *storage.Connection, identity *Ide
 func (u *User) SoftDeleteUser(tx *storage.Connection) error {
 	u.Email = storage.NullString(obfuscateEmail(u, u.GetEmail()))
 	u.Phone = storage.NullString(obfuscatePhone(u, u.GetPhone()))
-	u.EmailChange = obfuscateEmail(u, u.EmailChange)
-	u.PhoneChange = obfuscatePhone(u, u.PhoneChange)
+	u.EmailChange = storage.NullString(obfuscateEmail(u, u.GetEmailChange()))
+	u.PhoneChange = storage.NullString(obfuscatePhone(u, u.GetPhoneChange()))
 	u.EncryptedPassword = nil
 	u.ConfirmationToken = ""
 	u.RecoveryToken = ""

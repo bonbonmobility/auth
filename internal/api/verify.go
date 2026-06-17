@@ -534,14 +534,14 @@ func (a *API) emailChangeVerify(r *http.Request, conn *storage.Connection, param
 			// confirming the email change should create a new email identity if the user doesn't have one
 			if _, terr = a.createNewIdentity(tx, user, "email", structs.Map(provider.Claims{
 				Subject:       user.ID.String(),
-				Email:         user.EmailChange,
+				Email:         user.GetEmailChange(),
 				EmailVerified: true,
 			})); terr != nil {
 				return terr
 			}
 		} else {
 			if terr := identity.UpdateIdentityData(tx, map[string]interface{}{
-				"email":          user.EmailChange,
+				"email":          user.GetEmailChange(),
 				"email_verified": true,
 			}); terr != nil {
 				return terr
@@ -689,7 +689,7 @@ func (a *API) verifyUserAndToken(conn *storage.Connection, params *VerifyParams,
 		sentAt := user.ConfirmationSentAt
 		expectedToken := user.ConfirmationToken
 		if params.Type == phoneChangeVerification {
-			phone = user.PhoneChange
+			phone = user.GetPhoneChange()
 			sentAt = user.PhoneChangeSentAt
 			expectedToken = user.PhoneChangeToken
 		}

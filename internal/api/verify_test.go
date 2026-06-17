@@ -323,9 +323,9 @@ func (ts *VerifyTestSuite) TestInvalidOtp() {
 	u.EmailChangeTokenCurrent = "123456"
 	require.NoError(ts.T(), ts.API.db.Update(u))
 	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.GetEmail(), u.ConfirmationToken, models.ConfirmationToken))
-	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.PhoneChange, u.PhoneChangeToken, models.PhoneChangeToken))
+	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.GetPhoneChange(), u.PhoneChangeToken, models.PhoneChangeToken))
 	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.GetEmail(), u.EmailChangeTokenCurrent, models.EmailChangeTokenCurrent))
-	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.EmailChange, u.EmailChangeTokenNew, models.EmailChangeTokenNew))
+	require.NoError(ts.T(), models.CreateOneTimeToken(ts.API.db, u.ID, u.GetEmailChange(), u.EmailChangeTokenNew, models.EmailChangeTokenNew))
 
 	type ResponseBody struct {
 		Code int    `json:"code"`
@@ -910,7 +910,7 @@ func (ts *VerifyTestSuite) TestVerifyValidOtp() {
 			},
 			expected: expected{
 				code:      http.StatusOK,
-				tokenHash: crypto.GenerateTokenHash(u.EmailChange, "123456"),
+				tokenHash: crypto.GenerateTokenHash(u.GetEmailChange(), "123456"),
 			},
 		},
 		{
@@ -923,7 +923,7 @@ func (ts *VerifyTestSuite) TestVerifyValidOtp() {
 			},
 			expected: expected{
 				code:      http.StatusOK,
-				tokenHash: crypto.GenerateTokenHash(u.PhoneChange, "123456"),
+				tokenHash: crypto.GenerateTokenHash(u.GetPhoneChange(), "123456"),
 			},
 		},
 		{
@@ -943,11 +943,11 @@ func (ts *VerifyTestSuite) TestVerifyValidOtp() {
 			sentTime: time.Now(),
 			body: map[string]interface{}{
 				"type":       mail.EmailChangeVerification,
-				"token_hash": crypto.GenerateTokenHash(u.EmailChange, "123456"),
+				"token_hash": crypto.GenerateTokenHash(u.GetEmailChange(), "123456"),
 			},
 			expected: expected{
 				code:      http.StatusOK,
-				tokenHash: crypto.GenerateTokenHash(u.EmailChange, "123456"),
+				tokenHash: crypto.GenerateTokenHash(u.GetEmailChange(), "123456"),
 			},
 		},
 		{
@@ -1010,7 +1010,7 @@ func (ts *VerifyTestSuite) TestSecureEmailChangeWithTokenHash() {
 	require.NoError(ts.T(), ts.API.db.Update(u))
 
 	currentEmailChangeToken := crypto.GenerateTokenHash(string(u.Email), "123456")
-	newEmailChangeToken := crypto.GenerateTokenHash(u.EmailChange, "123456")
+	newEmailChangeToken := crypto.GenerateTokenHash(u.GetEmailChange(), "123456")
 
 	cases := []struct {
 		desc                   string

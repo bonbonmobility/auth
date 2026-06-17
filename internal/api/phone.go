@@ -58,7 +58,7 @@ func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, use
 	case phoneChangeVerification:
 		token = &user.PhoneChangeToken
 		sentAt = user.PhoneChangeSentAt
-		user.PhoneChange = phone
+		user.PhoneChange = storage.NullString(phone)
 		includeFields = append(includeFields, "phone_change", "phone_change_token", "phone_change_sent_at")
 	case phoneConfirmationOtp:
 		token = &user.ConfirmationToken
@@ -157,7 +157,7 @@ func (a *API) sendPhoneConfirmation(r *http.Request, tx *storage.Connection, use
 			ottErr = errors.Wrap(err, "Database error creating confirmation token for phone")
 		}
 	case phoneChangeVerification:
-		if err := models.CreateOneTimeToken(tx, user.ID, user.PhoneChange, user.PhoneChangeToken, models.PhoneChangeToken); err != nil {
+		if err := models.CreateOneTimeToken(tx, user.ID, user.GetPhoneChange(), user.PhoneChangeToken, models.PhoneChangeToken); err != nil {
 			ottErr = errors.Wrap(err, "Database error creating phone change token")
 		}
 	case phoneReauthenticationOtp:

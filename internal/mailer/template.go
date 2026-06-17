@@ -177,7 +177,7 @@ func (m *TemplateMailer) EmailChangeMail(r *http.Request, user *models.User, otp
 	}
 	emails := []Email{
 		{
-			Address:   user.EmailChange,
+			Address:   user.GetEmailChange(),
 			Otp:       otpNew,
 			TokenHash: user.EmailChangeTokenNew,
 			Subject:   withDefault(m.Config.Mailer.Subjects.EmailChange, "Confirm Email Change"),
@@ -214,7 +214,7 @@ func (m *TemplateMailer) EmailChangeMail(r *http.Request, user *models.User, otp
 				"SiteURL":         m.Config.SiteURL,
 				"ConfirmationURL": externalURL.ResolveReference(path).String(),
 				"Email":           user.GetEmail(),
-				"NewEmail":        user.EmailChange,
+				"NewEmail":        user.GetEmailChange(),
 				"Token":           token,
 				"TokenHash":       tokenHash,
 				"SendingTo":       address,
