@@ -79,6 +79,9 @@ const InvalidLoginMessage = "Invalid login credentials"
 func (a *API) Token(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	grantType := r.FormValue("grant_type")
+	if a.shouldProxyRefreshToken(grantType) {
+		return a.authV2Proxy.Forward(w, r, "/token")
+	}
 	switch grantType {
 	case "password":
 		return a.ResourceOwnerPasswordGrant(ctx, w, r)

@@ -33,7 +33,8 @@ type API struct {
 	config  *conf.GlobalConfiguration
 	version string
 
-	hibpClient *hibp.PwnedClient
+	hibpClient   *hibp.PwnedClient
+	authV2Proxy  *AuthV2Proxy
 
 	// overrideTime can be used to override the clock used by handlers. Should only be used in tests!
 	overrideTime func() time.Time
@@ -91,6 +92,7 @@ func NewAPIWithVersion(globalConfig *conf.GlobalConfiguration, db *storage.Conne
 	}
 
 	api.deprecationNotices()
+	api.authV2Proxy = newAuthV2Proxy(globalConfig)
 
 	xffmw, _ := xff.Default()
 	logger := observability.NewStructuredLogger(logrus.StandardLogger(), globalConfig)

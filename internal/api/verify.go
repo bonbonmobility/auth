@@ -1,8 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -101,8 +104,16 @@ func (a *API) Verify(w http.ResponseWriter, r *http.Request) error {
 		}
 		return a.verifyGet(w, r, params)
 	case http.MethodPost:
-		if err := retrieveRequestParams(r, params); err != nil {
+		bodyBytes, err := getBodyBytes(r)
+		if err != nil {
 			return err
+		}
+		r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		if err := json.Unmarshal(bodyBytes, params); err != nil {
+			return badRequestError(ErrorCodeBadJSON, "Could not parse request body as JSON: %v", err)
+		}
+		if a.shouldProxySmsVerify(r, params.Type) {
+			return a.authV2Proxy.Forward(w, r, "/verify")
 		}
 		if err := params.Validate(r, a); err != nil {
 			return err

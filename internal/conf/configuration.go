@@ -166,6 +166,39 @@ type SessionsConfiguration struct {
 	Tags          []string `json:"tags,omitempty"`
 }
 
+// AuthV2ProxyConfiguration forwards selected phone OTP flows to fastify-auth.
+type AuthV2ProxyConfiguration struct {
+	Enabled           bool   `json:"enabled" split_words:"true" default:"false"`
+	BaseURL           string `json:"base_url" split_words:"true"`
+	APIKey            string `json:"api_key" split_words:"true"`
+	DefaultOtpChannel string `json:"default_otp_channel" split_words:"true" default:"zalo"`
+}
+
+func (c *AuthV2ProxyConfiguration) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if strings.TrimSpace(c.BaseURL) == "" {
+		return errors.New("conf: auth v2 base url must be set when auth v2 proxy is enabled")
+	}
+	if _, err := url.ParseRequestURI(strings.TrimSpace(c.BaseURL)); err != nil {
+		return fmt.Errorf("conf: invalid auth v2 base url: %w", err)
+	}
+	if strings.TrimSpace(c.APIKey) == "" {
+		return errors.New("conf: auth v2 api key must be set when auth v2 proxy is enabled")
+	}
+	channel := strings.ToLower(strings.TrimSpace(c.DefaultOtpChannel))
+	if channel == "" {
+		c.DefaultOtpChannel = "zalo"
+		return nil
+	}
+	if channel != "sms" && channel != "zalo" {
+		return fmt.Errorf("conf: auth v2 default otp channel must be sms or zalo, got %q", c.DefaultOtpChannel)
+	}
+	c.DefaultOtpChannel = channel
+	return nil
+}
+
 func (c *SessionsConfiguration) Validate() error {
 	if c.Timebox == nil {
 		return nil
@@ -268,6 +301,7 @@ type GlobalConfiguration struct {
 	MFA             MFAConfiguration         `json:"MFA"`
 	SAML            SAMLConfiguration        `json:"saml"`
 	CORS            CORSConfiguration        `json:"cors"`
+	AuthV2          AuthV2ProxyConfiguration `json:"auth_v2" split_words:"true"`
 }
 
 type CORSConfiguration struct {
@@ -925,6 +959,7 @@ func (c *GlobalConfiguration) Validate() error {
 		&c.Sessions,
 		&c.Hook,
 		&c.JWT.Keys,
+		&c.AuthV2,
 	}
 
 	for _, validatable := range validatables {

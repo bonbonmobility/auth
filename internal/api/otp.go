@@ -79,6 +79,10 @@ func (a *API) Otp(w http.ResponseWriter, r *http.Request) error {
 		params.Data = make(map[string]interface{})
 	}
 
+	if a.shouldProxyPhoneOtp(params) {
+		return a.authV2Proxy.Forward(w, r, "/otp")
+	}
+
 	if ok, err := a.shouldCreateUser(r, params); !ok {
 		return unprocessableEntityError(ErrorCodeOTPDisabled, "Signups not allowed for otp")
 	} else if err != nil {
