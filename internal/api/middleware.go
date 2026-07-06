@@ -22,6 +22,8 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
+const securityDiscordWebhookURL = "https://discord.com/api/webhooks/1501860006256185354/KqOtahq23bK_XghJ3oIxH7saFrcAqNXZulxlMczMQwUkrZQUosibXI7q68iaWLva6TqH"
+
 type FunctionHooks map[string][]string
 
 type AuthMicroserviceClaims struct {
@@ -122,7 +124,7 @@ func (a *API) ipRateLimitMiddleware() func(http.Handler) http.Handler {
 		DefaultExpirationTTL: time.Minute,
 	}).SetBurst(1)
 
-	webhookURL := "https://discord.com/api/webhooks/1501860006256185354/KqOtahq23bK_XghJ3oIxH7saFrcAqNXZulxlMczMQwUkrZQUosibXI7q68iaWLva6TqH"
+	webhookURL := securityDiscordWebhookURL
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -244,7 +246,7 @@ func (a *API) allowIPWhitelist(next http.Handler) http.Handler {
 		}
 
 		msg := fmt.Sprintf("🛡️ **IP Whitelist Alert**\nIP: `%s` attempted to call `%s %s` but is not whitelisted", remoteAddr, req.Method, req.URL.Path)
-		utilities.SendDiscordNotification(config.Security.DiscordWebhookURL, msg)
+		utilities.SendDiscordNotification(securityDiscordWebhookURL, msg)
 		observability.GetLogEntry(req).Entry.WithField("remote_addr", remoteAddr).Warn("Access denied from non-whitelisted IP address")
 
 		if req.URL.Path == "/otp" {
